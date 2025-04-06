@@ -18,7 +18,14 @@ bp = Blueprint('webhook', __name__, url_prefix='/webhook')
 @bp.route('/notta', methods=['POST'])
 def notta_webhook():
     """Zapier経由でNottaからのWebhookを受け取るエンドポイント"""
+    current_app.logger.info("--- Webhook /notta endpoint START ---")
     try:
+        # ★ 主要な環境変数の確認ログを追加 ★
+        current_app.logger.info(f"DATABASE_URL set: {'Yes' if os.environ.get('DATABASE_URL') else 'No'}")
+        current_app.logger.info(f"NOTION_API_KEY set: {'Yes' if os.environ.get('NOTION_API_KEY') else 'No'}")
+        current_app.logger.info(f"GOOGLE_API_KEY set: {'Yes' if os.environ.get('GOOGLE_API_KEY') else 'No'}")
+        # 他の主要なキーも同様に追加可能
+
         # リクエストデータのログ記録
         current_app.logger.info(f"Webhook received: {request.data}")
         
@@ -52,6 +59,7 @@ def notta_webhook():
             except (ValueError, TypeError) as e:
                 current_app.logger.warning(f"Invalid creation_time format (input: '{data['creation_time']}', type: {type(data['creation_time'])}) - Error: {e}")
                 notta_creation_time = None # パース失敗時は None を設定
+        current_app.logger.info(f"Parsed creation_time: {notta_creation_time}")
         
         # 履歴レコードの作成
         history = MinutesHistory(
@@ -60,14 +68,17 @@ def notta_webhook():
             raw_data=json.dumps(data),
             status="pending"
         )
-        
-        # データベースに保存
+        current_app.logger.info("--- Attempting to add history to session ---")
         db.session.add(history)
+        current_app.logger.info("--- Attempting to commit session (add history) ---")
         db.session.commit()
+        current_app.logger.info(f"--- History record created with ID: {history.id} ---")
         
         # 非同期で議事録生成処理を開始（本来はCeleryなどのタスクキューを使うべき）
         # ここでは簡易的に同期処理として実装
+        current_app.logger.info(f"--- Calling process_minutes_generation for history_id: {history.id} ---")
         process_minutes_generation(history.id)
+        current_app.logger.info(f"--- process_minutes_generation finished for history_id: {history.id} ---")
         
         return jsonify({
             "status": "success", 
@@ -76,7 +87,7 @@ def notta_webhook():
         }), 200
         
     except Exception as e:
-        current_app.logger.error(f"Error processing webhook: {str(e)}")
+        current_app.logger.error(f"Error processing webhook: {str(e)}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -86,19 +97,26 @@ def process_minutes_generation(history_id):
     Args:
         history_id (int): 処理する履歴レコードのID
     """
+    current_app.logger.info(f"--- process_minutes_generation START for history_id: {history_id} ---")
     try:
         # 履歴レコードの取得
+        current_app.logger.info(f"--- Querying MinutesHistory for id: {history_id} ---")
         history = MinutesHistory.query.get(history_id)
+        current_app.logger.info(f"--- Found history record: {'Yes' if history else 'No'} ---")
         if not history:
             current_app.logger.error(f"History record not found: {history_id}")
             return
         
         # 処理中に更新
         history.status = "processing"
+        current_app.logger.info("--- Attempting to commit session (update status to processing) ---")
         db.session.commit()
+        current_app.logger.info("--- Status updated to processing ---")
         
         # 設定の取得
+        current_app.logger.info("--- Querying Settings ---")
         settings = Settings.query.first()
+        current_app.logger.info(f"--- Found settings record: {'Yes' if settings else 'No'} ---")
         if not settings:
             current_app.logger.error("Settings not found")
             history.status = "failed"
@@ -286,7 +304,7 @@ def process_minutes_generation(history_id):
         current_app.logger.info(f"Minutes generation completed for history_id: {history_id}")
         
     except Exception as e:
-        current_app.logger.error(f"Error in minutes generation: {str(e)}")
+        current_app.logger.error(f"Error in minutes generation (history_id: {history_id}): {str(e)}", exc_info=True)
         
         # エラー情報を保存
         try:
