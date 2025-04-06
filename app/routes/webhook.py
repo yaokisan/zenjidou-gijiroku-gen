@@ -46,9 +46,12 @@ def notta_webhook():
         notta_creation_time = None
         if "creation_time" in data and data["creation_time"]:
             try:
-                notta_creation_time = datetime.strptime(data["creation_time"], "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                current_app.logger.warning(f"Invalid creation_time format: {data['creation_time']}")
+                # Unixタイムスタンプ文字列を整数に変換し、datetimeオブジェクトへ
+                timestamp = int(str(data["creation_time"])) # 文字列化してからintへ
+                notta_creation_time = datetime.fromtimestamp(timestamp)
+            except (ValueError, TypeError) as e:
+                current_app.logger.warning(f"Invalid creation_time format (input: '{data['creation_time']}', type: {type(data['creation_time'])}) - Error: {e}")
+                notta_creation_time = None # パース失敗時は None を設定
         
         # 履歴レコードの作成
         history = MinutesHistory(
