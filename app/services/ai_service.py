@@ -64,15 +64,23 @@ def generate_minutes(content, title, creation_time, speakers, ai_provider, ai_mo
         formatted_date = ""
         if creation_time:
             try:
-                # 日時文字列をパース (フォーマットは状況に応じて調整)
                 if isinstance(creation_time, datetime):
                     dt = creation_time
                 else:
-                    dt = datetime.strptime(creation_time, "%Y-%m-%d %H:%M:%S")
+                    # Unixタイムスタンプ形式 (数値文字列) か試す
+                    try:
+                        timestamp = int(creation_time)
+                        dt = datetime.fromtimestamp(timestamp)
+                    except ValueError:
+                        # 数値でなければ %Y-%m-%d %H:%M:%S 形式としてパースを試みる
+                        dt = datetime.strptime(creation_time, "%Y-%m-%d %H:%M:%S")
+                
+                # 日本語形式にフォーマット
                 formatted_date = dt.strftime("%Y年%m月%d日 %H:%M")
             except (ValueError, TypeError) as e:
-                logger.warning(f"日時のパースに失敗しました: {str(e)}")
-                formatted_date = str(creation_time)
+                # パース失敗時のログを強化
+                logger.warning(f"日時のパースに失敗しました (入力値: '{creation_time}'): {str(e)}")
+                formatted_date = str(creation_time) # パース失敗時は元の値をそのまま使う
         
         # AIプロバイダー別の処理
         if ai_provider == "google_gemini":
