@@ -7,4 +7,5 @@ Werkzeug==2.3.7
 openai==1.6.1
 anthropic==0.8.1
 google-generativeai==0.3.2
-notion-client==2.0.0 
+notion-client==2.0.0
+gunicorn 
