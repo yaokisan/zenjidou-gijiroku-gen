@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}設定 - 全自動議事録生成アプリ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>アプリ設定</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('settings.update') }}" method="POST">
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2">AIモデル設定</h5>
+                        
+                        <!-- AIプロバイダー選択 -->
+                        <div class="mb-3">
+                            <label for="ai_provider" class="form-label fw-bold">AIプロバイダー</label>
+                            <select class="form-select" id="ai_provider" name="ai_provider">
+                                <option value="google_gemini" {% if settings.ai_provider == 'google_gemini' %}selected{% endif %}>Google Gemini</option>
+                                <option value="anthropic_claude" {% if settings.ai_provider == 'anthropic_claude' %}selected{% endif %}>Anthropic Claude</option>
+                                <option value="openai_chatgpt" {% if settings.ai_provider == 'openai_chatgpt' %}selected{% endif %}>OpenAI ChatGPT</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Google Geminiモデル設定 -->
+                        <div class="mb-3 model-options" id="google_gemini_options">
+                            <label for="google_gemini_model" class="form-label">Geminiモデル</label>
+                            <select class="form-select" id="google_gemini_model" name="google_gemini_model">
+                                <option value="gemini-2.5-pro-exp-03-25" {% if settings.google_gemini_model == 'gemini-2.5-pro-exp-03-25' %}selected{% endif %}>Gemini 2.5 Pro (最新)</option>
+                                <option value="gemini-2.0-flash" {% if settings.google_gemini_model == 'gemini-2.0-flash' %}selected{% endif %}>Gemini 2.0 Flash (高速)</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Anthropic Claudeモデル設定 -->
+                        <div class="mb-3 model-options" id="anthropic_claude_options">
+                            <label for="anthropic_claude_model" class="form-label">Claudeモデル</label>
+                            <select class="form-select" id="anthropic_claude_model" name="anthropic_claude_model">
+                                <option value="claude-3.7-sonnet" {% if settings.anthropic_claude_model == 'claude-3.7-sonnet' %}selected{% endif %}>Claude 3.7 Sonnet</option>
+                            </select>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="anthropic_thinking_mode" name="anthropic_thinking_mode" value="1" {% if settings.anthropic_thinking_mode %}checked{% endif %}>
+                                <label class="form-check-label" for="anthropic_thinking_mode">
+                                    思考モードを有効にする（議事録生成時の推論過程を表示）
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- OpenAI ChatGPTモデル設定 -->
+                        <div class="mb-3 model-options" id="openai_chatgpt_options">
+                            <label for="openai_chatgpt_model" class="form-label">ChatGPTモデル</label>
+                            <select class="form-select" id="openai_chatgpt_model" name="openai_chatgpt_model">
+                                <option value="gpt-4o" {% if settings.openai_chatgpt_model == 'gpt-4o' %}selected{% endif %}>GPT-4o</option>
+                                <option value="gpt-4.5-preview" {% if settings.openai_chatgpt_model == 'gpt-4.5-preview' %}selected{% endif %}>GPT-4.5 Preview</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2">Notion連携設定</h5>
+                        
+                        <!-- Notion親ページID設定 -->
+                        <div class="mb-3">
+                            <label for="notion_parent_page_id" class="form-label fw-bold">Notion親ページID（オプション）</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="notion_parent_page_id" name="notion_parent_page_id" value="{{ settings.notion_parent_page_id or '' }}" placeholder="例: 8a12a5b9d45f4c8e9f7b6a3d12e0f9c8">
+                                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#notionHelpModal">
+                                    <i class="fas fa-question-circle"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">親ページIDを指定すると、そのページの子ページとして議事録が作成されます。指定しない場合、ワークスペース直下に作成されます。</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5 class="border-bottom pb-2">Webhook URL</h5>
+                        
+                        <!-- Webhook URL表示 -->
+                        <div class="mb-3">
+                            <label for="webhook_url" class="form-label fw-bold">Zapier用Webhook URL</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="webhook_url" readonly>
+                                <button class="btn btn-outline-primary" type="button" id="copy_webhook_url">
+                                    <i class="fas fa-copy"></i> コピー
+                                </button>
+                            </div>
+                            <div class="form-text">このURLをZapierの「Webhooks by Zapier」アクションに設定してください</div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> 設定を保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notionヘルプモーダル -->
+<div class="modal fade" id="notionHelpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Notion親ページIDの取得方法</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ol>
+                    <li>Notionで親ページを開きます</li>
+                    <li>ブラウザのアドレスバーからURLをコピーします</li>
+                    <li>URLの形式は以下のようになっています：<br>
+                        <code>https://www.notion.so/ページ名-<mark>8a12a5b9d45f4c8e9f7b6a3d12e0f9c8</mark></code></li>
+                    <li>ハイライトされた部分（32文字のID）をコピーして入力欄に貼り付けます</li>
+                </ol>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>重要: インテグレーションとページが共有されていることを確認してください。Notionページの右上「...」→「接続を追加」から共有設定ができます。
+                </div>
+                
+                <p class="mb-0 text-muted">※ NotionのAPIキーの設定は環境変数で行う必要があります</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Webhook URLを取得して表示
+        $.get("{{ url_for('settings.webhook_url') }}", function(data) {
+            $("#webhook_url").val(data.webhook_url);
+        });
+        
+        // Webhook URLコピーボタンの処理
+        $("#copy_webhook_url").click(function() {
+            var webhookUrl = $("#webhook_url").val();
+            navigator.clipboard.writeText(webhookUrl).then(function() {
+                // コピー成功時の表示
+                var originalText = $("#copy_webhook_url").html();
+                $("#copy_webhook_url").html('<i class="fas fa-check me-1"></i> コピーしました');
+                setTimeout(function() {
+                    $("#copy_webhook_url").html(originalText);
+                }, 2000);
+            });
+        });
+        
+        // AIプロバイダー変更時のモデルオプション表示切替
+        function updateModelOptions() {
+            var provider = $("#ai_provider").val();
+            $(".model-options").hide();
+            $("#" + provider + "_options").show();
+        }
+        
+        // 初期表示設定
+        updateModelOptions();
+        
+        // AIプロバイダー変更時の処理
+        $("#ai_provider").change(function() {
+            updateModelOptions();
+        });
+    });
+</script>
+{% endblock %} 

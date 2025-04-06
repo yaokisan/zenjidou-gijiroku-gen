@@ -1,0 +1,133 @@
+/* 全自動議事録生成アプリ スタイルシート */
+
+/* 全体のスタイル */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* ナビゲーションバー */
+.navbar-brand {
+    font-weight: 600;
+}
+
+/* カード */
+.card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    border: none;
+}
+
+.card-header {
+    font-weight: 500;
+}
+
+.card-header.bg-primary {
+    background: linear-gradient(135deg, #4e73df, #224abe) !important;
+}
+
+.card.shadow {
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important;
+}
+
+/* テーブル */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.table tbody td {
+    vertical-align: middle;
+    font-size: 0.95rem;
+}
+
+/* バッジ */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+    border-radius: 0.25rem;
+}
+
+/* フォーム */
+.form-label.fw-bold {
+    font-weight: 600 !important;
+}
+
+.form-select, .form-control {
+    border-radius: 0.375rem;
+}
+
+.form-text {
+    font-size: 0.8rem;
+}
+
+/* ボタン */
+.btn {
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+/* モーダル */
+.modal-content {
+    border-radius: 0.5rem;
+    border: none;
+}
+
+.modal-header {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+/* フッター */
+footer {
+    color: #6c757d;
+}
+
+/* レスポンシブ調整 */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table thead th {
+        font-size: 0.75rem;
+    }
+    
+    .table tbody td {
+        font-size: 0.85rem;
+    }
+}
+
+/* カスタムアニメーション */
+.btn-primary {
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* リンク */
+a {
+    transition: color 0.2s;
+}
+
+/* アイコン */
+.fa, .fas, .fab {
+    margin-right: 0.25rem;
+}
+
+/* スピナー (処理中表示用) */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.2em;
+} 

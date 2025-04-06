@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}議事録一覧 - 全自動議事録生成アプリ{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>生成された議事録一覧</h5>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-sm btn-light" id="refresh-list">
+                        <i class="fas fa-sync-alt me-1"></i> 更新
+                    </button>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-light dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-filter me-1"></i> フィルタ
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item filter-status" href="#" data-status="all">すべて表示</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item filter-status" href="#" data-status="completed">完了</a></li>
+                            <li><a class="dropdown-item filter-status" href="#" data-status="processing">処理中</a></li>
+                            <li><a class="dropdown-item filter-status" href="#" data-status="pending">待機中</a></li>
+                            <li><a class="dropdown-item filter-status" href="#" data-status="failed">失敗</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="minutes-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>状態</th>
+                                <th>元の録音タイトル</th>
+                                <th>生成されたタイトル</th>
+                                <th>処理日時</th>
+                                <th>使用AIモデル</th>
+                                <th>アクション</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if histories %}
+                                {% for history in histories %}
+                                <tr data-id="{{ history.id }}" data-status="{{ history.status }}">
+                                    <td>
+                                        {% if history.status == 'completed' %}
+                                            <span class="badge bg-success">完了</span>
+                                        {% elif history.status == 'processing' %}
+                                            <span class="badge bg-primary">処理中</span>
+                                        {% elif history.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">待機中</span>
+                                        {% elif history.status == 'failed' %}
+                                            <span class="badge bg-danger">失敗</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ history.notta_title }}</td>
+                                    <td>{{ history.generated_title or '(生成中)' }}</td>
+                                    <td>
+                                        {% if history.processed_at %}
+                                            {{ history.processed_at.strftime('%Y/%m/%d %H:%M') }}
+                                        {% else %}
+                                            {{ history.received_at.strftime('%Y/%m/%d %H:%M') if history.received_at }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if history.ai_provider == 'google_gemini' %}
+                                            <span class="text-success"><i class="fab fa-google me-1"></i>{{ history.ai_model }}</span>
+                                        {% elif history.ai_provider == 'anthropic_claude' %}
+                                            <span class="text-primary"><i class="fas fa-robot me-1"></i>{{ history.ai_model }}</span>
+                                        {% elif history.ai_provider == 'openai_chatgpt' %}
+                                            <span class="text-danger"><i class="fas fa-comment-dots me-1"></i>{{ history.ai_model }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if history.notion_page_url %}
+                                            <a href="{{ history.notion_page_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-external-link-alt me-1"></i>Notionで開く
+                                            </a>
+                                        {% elif history.status == 'failed' %}
+                                            <button type="button" class="btn btn-sm btn-outline-danger view-error" data-id="{{ history.id }}">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>エラー詳細
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                                <i class="fas fa-clock me-1"></i>処理中...
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fas fa-info-circle me-2"></i>議事録が生成されていません
+                                        </div>
+                                        <small class="d-block mt-2">Zapierを設定してNottaからデータを送信すると、ここに表示されます</small>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-light">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>議事録は文字起こしデータがWebhookで送信されると自動的に生成されます
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 使い方ガイド -->
+<div class="row mb-4" id="usage-guide">
+    <div class="col-lg-12">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>使い方ガイド</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <span class="badge bg-primary">Step 1</span>
+                                    Zapierの設定
+                                </h5>
+                                <p class="card-text">Nottaからデータを取得するためのZapierフローを設定します。</p>
+                                <ol>
+                                    <li>Zapierで新しいZapを作成</li>
+                                    <li>Nottaをトリガーとして選択</li>
+                                    <li>「Webhooks by Zapier」を選択</li>
+                                    <li>設定画面からWebhook URLをコピーして設定</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <span class="badge bg-primary">Step 2</span>
+                                    AIモデルの選択
+                                </h5>
+                                <p class="card-text">議事録生成に使用するAIモデルを設定ページで選択します。</p>
+                                <ul>
+                                    <li><strong>Google Gemini:</strong> 高品質かつ高速な処理</li>
+                                    <li><strong>Anthropic Claude:</strong> 詳細な分析が可能</li>
+                                    <li><strong>OpenAI GPT:</strong> バランスの取れた生成</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <span class="badge bg-primary">Step 3</span>
+                                    自動生成の確認
+                                </h5>
+                                <p class="card-text">Nottaで文字起こしが完了すると、自動的に議事録が生成されます。</p>
+                                <ul>
+                                    <li>このページで処理状況を確認</li>
+                                    <li>生成完了後はNotionへのリンクが表示</li>
+                                    <li>エラーが発生した場合は詳細を確認可能</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- エラー詳細モーダル -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">処理エラー詳細</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">エラーメッセージ:</label>
+                    <div class="border rounded p-3 bg-light" id="error-message-text"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">元の録音タイトル:</label>
+                    <div class="border rounded p-2" id="error-notta-title"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">発生日時:</label>
+                    <div class="border rounded p-2" id="error-timestamp"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // 議事録一覧の自動更新（5秒ごと）- 処理中や待機中のレコードがある場合のみ
+        function hasPendingRecords() {
+            return $("#minutes-table tbody tr[data-status='pending'], #minutes-table tbody tr[data-status='processing']").length > 0;
+        }
+        
+        function updateMinutesList() {
+            if (hasPendingRecords()) {
+                $.get("{{ url_for('results.get_histories') }}", function(data) {
+                    if (data && data.data) {
+                        // テーブルの更新処理
+                        location.reload(); // 簡易的な実装としてページリロード
+                    }
+                });
+            }
+        }
+        
+        // 初期設定
+        if (hasPendingRecords()) {
+            setInterval(updateMinutesList, 5000);
+        }
+        
+        // 更新ボタンのクリックイベント
+        $("#refresh-list").click(function() {
+            location.reload();
+        });
+        
+        // フィルターのクリックイベント
+        $(".filter-status").click(function(e) {
+            e.preventDefault();
+            var status = $(this).data("status");
+            
+            if (status === "all") {
+                // すべて表示
+                $("#minutes-table tbody tr").show();
+            } else {
+                // 特定のステータスのみ表示
+                $("#minutes-table tbody tr").hide();
+                $("#minutes-table tbody tr[data-status='" + status + "']").show();
+            }
+        });
+        
+        // エラー詳細表示のクリックイベント
+        $(".view-error").click(function() {
+            var historyId = $(this).data("id");
+            
+            // APIからエラー詳細を取得
+            $.get("{{ url_for('results.get_history', history_id=0) }}".replace("0", historyId), function(data) {
+                if (data) {
+                    $("#error-message-text").text(data.error_message);
+                    $("#error-notta-title").text(data.notta_title);
+                    $("#error-timestamp").text(data.processed_at || data.received_at);
+                    
+                    // モーダル表示
+                    var errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                    errorModal.show();
+                }
+            });
+        });
+        
+        // 議事録がない場合はガイドを表示、ある場合は非表示
+        if ($("#minutes-table tbody tr").length === 1 && $("#minutes-table tbody tr td[colspan]").length > 0) {
+            $("#usage-guide").show();
+        } else {
+            $("#usage-guide").hide();
+        }
+    });
+</script>
+{% endblock %} 
