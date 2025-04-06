@@ -21,7 +21,7 @@ def create_app(test_config=None):
     # アプリケーション設定
     app.config.from_mapping(
         SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
-        SQLALCHEMY_DATABASE_URI=f"sqlite:///{os.path.join(app.instance_path, 'app.db')}",
+        SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
     )
 
@@ -29,7 +29,7 @@ def create_app(test_config=None):
     if test_config is not None:
         app.config.from_mapping(test_config)
 
-    # インスタンスフォルダの作成
+    # SQLiteを使用しないため、インスタンスフォルダ作成は必須ではない (残してもOK)
     try:
         os.makedirs(app.instance_path)
     except OSError:
